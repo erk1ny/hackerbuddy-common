@@ -1,0 +1,16 @@
+name: nuclei
+description: Fast vulnerability scanner using community-maintained templates
+binary: nuclei
+categories: [scanning, vulnerability]
+intensity: 4
+scope_extraction:
+  flag: "-u"
+  pattern: "https?://([^/:]+)"
+output_flags: "-j -o {output_file}"
+default_timeout: 600
+install: |
+  nuclei is a Go-based vulnerability scanner. Install from https://github.com/projectdiscovery/nuclei
+  - macOS: brew install nuclei
+  - Linux: go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+  - Or download from GitHub releases
+  After install, run: nuclei -update-templates

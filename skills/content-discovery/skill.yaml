@@ -1,0 +1,9 @@
+name: content-discovery
+version: "1.0.0"
+description: Discover hidden paths, endpoints, and files on a web target
+type: atomic
+tags: [recon, discovery, enumeration]
+tools: [ffuf]
+mode: discover
+depends_on: []
+intensity: 4

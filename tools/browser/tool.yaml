@@ -1,0 +1,10 @@
+name: browser
+description: Headless browser for JavaScript-rendered page analysis
+binary: chromium
+categories: [browser, rendering, dom]
+intensity: 3
+install: |
+  Requires a Chromium-based browser.
+  - Linux: apt install chromium-browser
+  - macOS: brew install --cask chromium
+  - Or use Google Chrome: the binary is usually at /usr/bin/google-chrome

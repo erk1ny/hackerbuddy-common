@@ -1,0 +1,9 @@
+name: detect-sdks
+version: "1.0.0"
+description: Identify JavaScript SDKs and third-party libraries loaded on a page
+type: atomic
+tags: [recon, javascript, sdk, fingerprinting]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2

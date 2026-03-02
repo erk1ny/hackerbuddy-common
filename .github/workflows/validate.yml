@@ -1,0 +1,135 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate manifest.json
+        run: |
+          python3 -c "
+          import json, sys
+          m = json.load(open('manifest.json'))
+          assert 'version' in m, 'missing version'
+          parts = m['version'].split('.')
+          assert len(parts) == 3, f'not semver: {m[\"version\"]}'
+          print(f'Version: {m[\"version\"]}')
+          "
+
+      - name: Validate tool definitions
+        run: |
+          python3 -c "
+          import yaml, pathlib, sys
+          errors = []
+          required = {'name', 'description', 'binary', 'categories', 'intensity', 'install'}
+          tools = set()
+          for d in sorted(pathlib.Path('tools').iterdir()):
+              if not d.is_dir(): continue
+              tools.add(d.name)
+              ty = d / 'tool.yaml'
+              km = d / 'knowledge.md'
+              if not ty.exists():
+                  errors.append(f'{d.name}: missing tool.yaml')
+                  continue
+              if not km.exists():
+                  errors.append(f'{d.name}: missing knowledge.md')
+              data = yaml.safe_load(ty.read_text())
+              missing = required - set(data.keys())
+              if missing:
+                  errors.append(f'{d.name}: missing fields {missing}')
+              if data.get('name') != d.name:
+                  errors.append(f'{d.name}: name \"{data.get(\"name\")}\" != dir name')
+              intensity = data.get('intensity', 3)
+              if not (1 <= intensity <= 5):
+                  errors.append(f'{d.name}: intensity {intensity} not in 1-5')
+          if errors:
+              print('\n'.join(errors), file=sys.stderr)
+              sys.exit(1)
+          print(f'All tools valid ({len(tools)} total)')
+          "
+
+      - name: Validate skill definitions
+        run: |
+          python3 -c "
+          import yaml, pathlib, re, sys
+          errors = []
+          required = {'name', 'description', 'type', 'tags', 'mode'}
+
+          # Collect tool names for cross-repo validation
+          tool_names = set()
+          for d in pathlib.Path('tools').iterdir():
+              if d.is_dir(): tool_names.add(d.name)
+
+          skills = {}
+          # First pass: load all skills
+          for d in sorted(pathlib.Path('skills').iterdir()):
+              if not d.is_dir(): continue
+              sy = d / 'skill.yaml'
+              sm = d / 'skill.md'
+              if not sy.exists():
+                  errors.append(f'{d.name}: missing skill.yaml')
+                  continue
+              if not sm.exists():
+                  errors.append(f'{d.name}: missing skill.md')
+              data = yaml.safe_load(sy.read_text())
+              skills[d.name] = data
+              missing = required - set(data.keys())
+              if missing:
+                  errors.append(f'{d.name}: missing fields {missing}')
+              if data.get('name') != d.name:
+                  errors.append(f'{d.name}: name \"{data.get(\"name\")}\" != dir name')
+              if data.get('type') not in ('atomic', 'full'):
+                  errors.append(f'{d.name}: type must be atomic or full')
+              intensity = data.get('intensity', 3)
+              if not (1 <= intensity <= 5):
+                  errors.append(f'{d.name}: intensity {intensity} not in 1-5')
+              # Cross-repo: tools referenced in skill.yaml must exist in tools/
+              for tool_ref in data.get('tools', []):
+                  if tool_ref not in tool_names:
+                      errors.append(f'{d.name}: references tool \"{tool_ref}\" but tools/{tool_ref}/ does not exist')
+
+          # Second pass: cross-validate dependencies and @references
+          for name, data in skills.items():
+              stype = data.get('type')
+              deps = data.get('depends_on', [])
+              if stype == 'atomic' and deps:
+                  errors.append(f'{name}: atomic skill cannot have depends_on')
+              if stype == 'full':
+                  for dep in deps:
+                      if dep not in skills:
+                          errors.append(f'{name}: depends_on \"{dep}\" not found')
+                      elif skills[dep].get('type') != 'atomic':
+                          errors.append(f'{name}: depends_on \"{dep}\" is not atomic')
+              # Check @skill-name refs in skill.md match depends_on
+              sm = pathlib.Path('skills') / name / 'skill.md'
+              if sm.exists():
+                  content = sm.read_text()
+                  # Strip fenced code blocks to avoid false positives from @mentions in code/URLs
+                  stripped = re.sub(r'\x60\x60\x60.*?\x60\x60\x60', '', content, flags=re.DOTALL)
+                  # Extract @tool:name refs (not skill refs)
+                  tool_md_refs = set(re.findall(r'(?<!\w)@tool:([\w-]+)', stripped))
+                  for tr in tool_md_refs:
+                      if tr not in tool_names:
+                          errors.append(f'{name}: @tool:{tr} in skill.md but tools/{tr}/ does not exist')
+                  # Extract @skill-name refs: must be preceded by whitespace/SOL, not inside @tool:
+                  all_at_refs = set(re.findall(r'(?:^|(?<=\s))@([\w-]+)', stripped, re.MULTILINE))
+                  all_at_refs -= {'tool'}  # @tool:name prefix word
+                  skill_refs = all_at_refs - tool_md_refs
+                  for ref in skill_refs:
+                      if ref in skills and ref not in deps:
+                          errors.append(f'{name}: @{ref} in skill.md but not in depends_on')
+
+          if errors:
+              print('\n'.join(errors), file=sys.stderr)
+              sys.exit(1)
+          print(f'All skills valid ({len(skills)} total)')
+          "
