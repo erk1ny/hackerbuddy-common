@@ -1,0 +1,14 @@
+name: tech-fingerprint
+version: "1.0.0"
+description: Identify the target's full technology stack using HTTP probing and response analysis
+type: atomic
+tags: [recon, fingerprinting, technology, enumeration]
+tools: [httpx]
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "Base URL to fingerprint"

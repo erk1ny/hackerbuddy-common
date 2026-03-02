@@ -1,0 +1,15 @@
+name: sqlmap
+description: Automated SQL injection detection and exploitation framework
+binary: sqlmap
+categories: [exploitation, injection, sqli]
+intensity: 5
+scope_extraction:
+  flag: "-u"
+  pattern: "https?://([^/:?#]+)"
+output_flags: "--output-dir={output_file}"
+default_timeout: 900
+install: |
+  sqlmap is a Python-based SQL injection tool. Install from https://github.com/sqlmapproject/sqlmap
+  - macOS: brew install sqlmap
+  - Linux: apt install sqlmap or pip install sqlmap
+  - Or clone: git clone https://github.com/sqlmapproject/sqlmap.git

@@ -1,0 +1,14 @@
+name: web-app-baseline
+version: "1.0.0"
+description: Baseline security assessment covering security headers, CORS, and framing defenses
+type: full
+tags: [baseline, headers, defense, audit, owasp]
+tools: []
+mode: discover
+depends_on: [check-security-headers, check-cors, check-framing]
+intensity: 1
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "Base URL to assess"

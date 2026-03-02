@@ -18,31 +18,28 @@ Each tool is a directory under `tools/` containing:
 - `tool.yaml` — tool metadata and configuration
 - `knowledge.md` — natural language document teaching the agent how to use the tool
 
+Agents interact with tools via a start/read/stop lifecycle. The `knowledge.md` content is injected into skill instructions wherever `@tool:name` appears, giving agents calibration patterns and decision logic inline.
+
 **tool.yaml schema:**
 
-```yaml
-name: ffuf                          # Must match directory name (lowercase-kebab-case)
-description: Fast web fuzzer        # What the tool does
-binary: ffuf                        # Command name (must be in PATH)
-categories: [fuzzing, discovery]    # Tool categories
-intensity: 5                        # 1-5 for work queue lane assignment
-scope_extraction:                   # How to extract target hostname from args
-  flag: "-u"                        # CLI flag containing target URL
-  pattern: "https?://([^/:]+)"      # Regex to extract hostname
-output_flags: "-o {output_file} -of json"  # Flags for structured output
-default_timeout: 300                # Timeout in seconds
-install: |                          # Install instructions (shown when binary missing)
-  brew install ffuf
-```
-
-Set `scope_extraction` to null/omit for tools that don't target URLs (local analysis only).
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Must match directory name (lowercase-kebab-case) |
+| `description` | string | Yes | What the tool does |
+| `binary` | string | Yes | Command name (must be in PATH) |
+| `categories` | list[string] | Yes | Tool categories |
+| `intensity` | int (1-5) | Yes | Work queue lane weight |
+| `install` | string | Yes | Install instructions (shown when binary missing) |
+| `scope_extraction` | object | No | `{flag, pattern}` — extracts target hostname from CLI args |
+| `output_flags` | string | No | Flags for structured output format |
+| `default_timeout` | int | No | Timeout in seconds (default 300) |
 
 ### Skills
 
 Each skill is a directory under `skills/` containing:
 
 - `skill.yaml` — skill metadata and configuration
-- `skill.md` — markdown instructions that agents follow
+- `skill.md` — markdown instructions that agents follow step by step
 
 **Two types:**
 - **Atomic** — single focused checks. Cannot reference other skills.
@@ -50,27 +47,30 @@ Each skill is a directory under `skills/` containing:
 
 **skill.yaml schema:**
 
-```yaml
-name: check-framing                 # Must match directory name (lowercase-kebab-case)
-version: "1.0.0"                    # Per-skill version tracking
-description: Check for clickjacking # What the skill checks
-type: atomic                        # "atomic" or "full"
-tags: [clickjacking, headers]       # For filtering/discovery
-tools: []                           # Required tool names (cross-validated)
-mode: discover                      # Primary agent mode
-depends_on: []                      # Atomic: must be empty. Full: list of atomic skill names
-intensity: 3                        # 1-5 for work queue lane assignment
-```
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Must match directory name (lowercase-kebab-case) |
+| `description` | string | Yes | What the skill checks |
+| `type` | string | Yes | `"atomic"` or `"full"` |
+| `tags` | list[string] | Yes | For filtering/discovery |
+| `mode` | string | Yes | Primary agent mode (discover, research, exploit, verify, report) |
+| `version` | string | No | Per-skill version tracking (default "0.0.0") |
+| `tools` | list[string] | No | Required tool names (cross-validated against tools/) |
+| `depends_on` | list[string] | No | Atomic skill names (must be empty for atomic type) |
+| `intensity` | int (1-5) | No | Work queue lane weight (default 3) |
+| `inputs` | list[object] | No | Input parameters (each: name, type, required, default, description) |
 
 **Reference syntax in skill.md:**
-- `@skill-name` — references another atomic skill (full skills only). Must match `depends_on`.
-- `@tool:name` — references a tool's knowledge. Both types can use this.
+- `@tool:name` — replaced with the tool's `knowledge.md` content at resolution time
+- `@skill-name` — replaced with the atomic skill's `skill.md` instructions (full skills only, must match `depends_on`)
+
+**Mandatory reporting:** agents must call `report_skill_result` after every skill with one of: `found`, `not_found`, `partial`, `variant`, `error`.
 
 ## How to add a new tool
 
 1. Create `tools/<name>/` directory (lowercase-kebab-case)
 2. Add `tool.yaml` with all required fields
-3. Add `knowledge.md` with usage patterns and decision logic
+3. Add `knowledge.md` with: what it does, core flags, calibration patterns, output format
 4. Bump `manifest.json` version
 5. Open a PR
 
@@ -78,10 +78,11 @@ intensity: 3                        # 1-5 for work queue lane assignment
 
 1. Create `skills/<name>/` directory (lowercase-kebab-case)
 2. Add `skill.yaml` with all required fields
-3. Add `skill.md` with detection/research procedures
-4. If full type: add `depends_on` entries and use `@skill-name` references in skill.md
-5. Bump `manifest.json` version
-6. Open a PR
+3. Add `skill.md` with: objective, step-by-step procedure, expected outcomes, output format
+4. Use `@tool:name` where the agent needs tool knowledge injected
+5. If full type: add `depends_on` entries and use `@skill-name` references in skill.md
+6. Bump `manifest.json` version
+7. Open a PR
 
 ## Testing locally
 

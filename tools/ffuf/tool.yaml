@@ -1,13 +1,13 @@
 name: ffuf
-description: Fast web fuzzer for content and parameter discovery
+description: Fast web fuzzer for content discovery, parameter enumeration, and endpoint mapping
 binary: ffuf
-categories: [fuzzing, discovery]
+categories: [fuzzing, discovery, enumeration]
 intensity: 5
 scope_extraction:
   flag: "-u"
-  pattern: "https?://([^/:]+)"
+  pattern: "https?://([^/:?#]+)"
 output_flags: "-o {output_file} -of json"
-default_timeout: 300
+default_timeout: 600
 install: |
   ffuf is a Go-based web fuzzer. Install from https://github.com/ffuf/ffuf
   - macOS: brew install ffuf

@@ -1,18 +1,19 @@
 # ffuf — Fast Web Fuzzer
 
 ## What it does
-ffuf is a fast web fuzzer written in Go. It replaces the keyword FUZZ in URLs, headers, or POST data with wordlist entries and reports interesting responses.
+ffuf replaces the keyword FUZZ in URLs, headers, or POST data with wordlist entries and reports interesting responses. It supports multiple FUZZ keywords for clusterbomb/pitchfork attack modes.
 
 ## Core flags
 
 | Flag | Purpose |
 |------|---------|
 | `-u URL` | Target URL with FUZZ keyword (e.g., `https://target/FUZZ`) |
-| `-w WORDLIST` | Path to wordlist file |
+| `-w WORDLIST` | Path to wordlist file. For multiple keywords: `-w list1:KEYWORD1 -w list2:KEYWORD2` |
 | `-H "Header: Value"` | Custom header (repeatable) |
 | `-X METHOD` | HTTP method (default: GET) |
-| `-d DATA` | POST data (use with `-X POST`) |
-| `-t THREADS` | Number of concurrent threads (default: 40) |
+| `-d DATA` | POST data body (use with `-X POST`) |
+| `-b "Cookie=Value"` | Cookie data |
+| `-t THREADS` | Concurrent threads (default: 40) |
 | `-mc CODES` | Match HTTP status codes (default: 200,204,301,302,307,401,403,405,500) |
 | `-fc CODES` | Filter (exclude) HTTP status codes |
 | `-fs SIZE` | Filter by response size |
@@ -22,50 +23,85 @@ ffuf is a fast web fuzzer written in Go. It replaces the keyword FUZZ in URLs, h
 | `-recursion` | Enable recursive fuzzing |
 | `-recursion-depth N` | Max recursion depth |
 | `-e EXTENSIONS` | Extension list (e.g., `.php,.html,.js`) |
-| `-o FILE -of json` | Output to JSON file |
-| `-rate RATE` | Requests per second limit |
-| `-timeout SECS` | HTTP request timeout |
+| `-o FILE -of json` | JSON output file |
+| `-rate N` | Max requests per second |
+| `-timeout N` | HTTP request timeout in seconds |
+| `-ac` | Auto-calibrate filtering (experimental) |
+| `-mode MODE` | Multi-wordlist mode: `clusterbomb` (all combos) or `pitchfork` (paired) |
 
-## Calibration patterns
+## Calibration loop (MANDATORY)
 
-### WAF detection
-If you see many 403 responses at the start, the target likely has a WAF blocking ffuf's default User-Agent. Test this:
-1. Use `execute_request` to fetch 2-3 of those 403 URLs with browser-like headers
-2. If they return non-403 responses, the WAF is blocking ffuf specifically
-3. Add browser headers to ffuf: `-H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'`
-4. Reduce thread count with `-t 10` to avoid rate limiting
+Never let ffuf run to completion without checking initial output first.
 
-### Content length filtering
-If many results share the same response size:
-1. Use `execute_request` to inspect a few of these responses
-2. If they're all default/error pages, add `-fs <size>` to filter them out
-3. Check if word count (`-fw`) or line count (`-fl`) gives cleaner filtering
+### Step 1: Start conservatively
+Use `start_tool` with reasonable defaults. For unknown targets, start with `-rate 50 -t 10`.
 
-### Directory detection
-When fuzzing directories:
-1. Compare 404 responses for `/existing-dir/nonexistent` vs `/nonexistent-dir/nonexistent`
-2. Different response headers or sizes indicate the directory exists even with 404 status
-3. Use `-fc 404` only if 404 responses are genuinely uniform
+### Step 2: Read first output batch
+Use `read_tool_output` to get the first 100-200 lines. Look for:
 
-### Adaptive strategy
-- Start with default filters, read first 200 lines of output
-- If too much noise: identify the common response size/code and add appropriate filters
-- If no results: try removing restrictive filters, check if the wordlist is appropriate
-- For API fuzzing: use `-mc all -fc 404` to see everything except 404s
-- For parameter fuzzing: use FUZZ in query string (`?param=FUZZ`) or POST body
+**WAF detection:** Many 403 responses at the start — target likely has a WAF blocking ffuf's User-Agent.
+- Verify by using `execute_request` to fetch 2-3 of those 403 URLs with browser headers
+- If they return non-403: add `-H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'`
+- Also reduce threads: `-t 5`
+
+**Uniform response sizes:** Many results share the same content length — default/error page noise.
+- Use `execute_request` to inspect a few of these responses
+- Add `-fs <size>` to filter. Check if `-fw` (word count) or `-fl` (line count) gives cleaner results
+- For wildcard DNS: filter the wildcard response size
+
+**Connection errors / timeouts:** Rate too aggressive.
+- Stop and restart with lower `-rate` and fewer `-t` threads
+
+**No results at all:** Wordlist mismatch or overly restrictive filters.
+- Try a different wordlist or remove `-mc`/`-fc` filters
+- Try `-mc all -fc 404` to see everything except 404s
+
+### Step 3: Adjust or continue
+If output looks clean, continue reading to completion. If not, `stop_tool` and restart with adjusted parameters.
 
 ## Common wordlists
 - `/usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt` — general content discovery
-- `/usr/share/seclists/Discovery/Web-Content/common.txt` — quick common paths
+- `/usr/share/seclists/Discovery/Web-Content/common.txt` — quick common paths (~4600 entries)
+- `/usr/share/seclists/Discovery/Web-Content/raft-large-files.txt` — file names
 - `/usr/share/seclists/Discovery/Web-Content/api/api-endpoints.txt` — API endpoint discovery
-- `/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt` — alternative location
+- `/usr/share/seclists/Fuzzing/LFI/LFI-Jhaddix.txt` — path traversal payloads
+- `/usr/share/seclists/Fuzzing/SQLi/Generic-SQLi.txt` — SQL injection payloads
+- `/usr/share/seclists/Fuzzing/XSS/XSS-BruteLogic.txt` — XSS payloads
+
+## Usage patterns
+
+### Directory discovery
+```
+ffuf -u https://target.com/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt -mc all -fc 404
+```
+
+### Parameter fuzzing (query string)
+```
+ffuf -u "https://target.com/page?FUZZ=test" -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt -fs <baseline-size>
+```
+
+### Parameter value fuzzing (POST)
+```
+ffuf -u https://target.com/login -X POST -d "username=admin&password=FUZZ" -w passwords.txt -fc 401
+```
+
+### Subdirectory + extension fuzzing
+```
+ffuf -u https://target.com/admin/FUZZ -w common.txt -e .php,.bak,.old,.txt,.conf
+```
+
+### Multi-keyword (e.g., user enumeration)
+```
+ffuf -u https://target.com/api/users/USERID -w ids.txt:USERID -mc all -fc 404
+```
 
 ## Output format
-With `-of json`, output is a JSON object with a `results` array. Each result has:
+With `-of json`, the output JSON has a `results` array. Each result:
 - `input.FUZZ` — the wordlist entry
 - `status` — HTTP status code
 - `length` — response content length
 - `words` — word count
 - `lines` — line count
-- `url` — full URL
+- `url` — full URL tested
 - `redirectlocation` — redirect target (if 3xx)
+- `duration` — request duration in ms

@@ -1,0 +1,14 @@
+name: check-sqli-error
+version: "1.0.0"
+description: Test for error-based SQL injection by injecting SQL syntax and observing error responses
+type: atomic
+tags: [sqli, injection, owasp, cwe-89, database]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL with parameters to test for SQL injection"

@@ -1,23 +1,44 @@
 # Check Framing
 
 ## Objective
-Determine if a target URL allows being embedded in an iframe.
+Determine if a target URL allows being embedded in an iframe, enabling clickjacking attacks.
 
 ## Procedure
-1. Use `execute_request` to fetch the target URL with a standard GET
-2. Check response headers:
-   - `X-Frame-Options`: DENY (blocked), SAMEORIGIN (same-origin only),
-     ALLOW-FROM (deprecated -- modern browsers ignore this)
-   - `Content-Security-Policy`: look for `frame-ancestors` directive
-3. If no framing headers present, the page can be framed by anyone
-4. Document: framing status, specific header values, any CSP details
+
+### Step 1: Fetch the target
+Use `execute_request` to GET the target URL.
+
+### Step 2: Check framing headers
+Examine the response for two independent framing defenses:
+
+**X-Frame-Options (XFO):**
+- `DENY` — fully blocked from framing (strongest)
+- `SAMEORIGIN` — only same-origin framing allowed
+- `ALLOW-FROM uri` — deprecated, modern browsers (Chrome, Firefox) ignore this entirely
+- Missing — no XFO protection
+
+**Content-Security-Policy frame-ancestors:**
+- `frame-ancestors 'none'` — equivalent to DENY
+- `frame-ancestors 'self'` — equivalent to SAMEORIGIN
+- `frame-ancestors https://trusted.com` — specific origins allowed
+- Missing — no CSP framing protection
+
+### Step 3: Check for inconsistency
+- XFO present but no CSP `frame-ancestors` — partial protection (CSP is the modern standard)
+- CSP `frame-ancestors` present but no XFO — good for modern browsers, older browsers unprotected
+- Both present but conflicting — CSP takes precedence in modern browsers
+- `ALLOW-FROM` used without CSP `frame-ancestors` — effectively unprotected in modern browsers
+
+### Step 4: Test state-changing pages
+If the target URL is a landing page, also check pages with state-changing actions (forms, buttons) — clickjacking is most dangerous on pages where a user click triggers an action (change password, delete account, transfer funds). Use `get_traffic` to find such pages.
 
 ## Expected outcomes
-- **found**: Page can be framed (no X-Frame-Options, no frame-ancestors, or misconfigured)
-- **not_found**: Page properly blocks framing (DENY, SAMEORIGIN, or strict frame-ancestors)
-- **partial**: Mixed signals (e.g., X-Frame-Options set but CSP missing frame-ancestors, or deprecated ALLOW-FROM used)
+- **found**: Page can be framed (no XFO, no frame-ancestors, or only deprecated ALLOW-FROM)
+- **not_found**: Page properly blocks framing via DENY/SAMEORIGIN + frame-ancestors
+- **partial**: Inconsistent protection (e.g., XFO present but CSP frame-ancestors missing, or only protecting some pages)
 
 ## Output
-- Framing allowed: yes / no / partial (same-origin only)
-- Headers found and their values
-- Notes on deprecated or misconfigured headers
+- X-Frame-Options header value (or "missing")
+- CSP frame-ancestors directive value (or "missing")
+- Whether state-changing pages are specifically protected
+- Clickjacking feasibility assessment

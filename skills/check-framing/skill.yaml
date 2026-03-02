@@ -1,9 +1,14 @@
 name: check-framing
 version: "1.0.0"
-description: Check if a target URL allows being embedded in an iframe (clickjacking defense)
+description: Test if a target allows being embedded in an iframe (clickjacking defense)
 type: atomic
 tags: [clickjacking, headers, defense, framing]
 tools: []
 mode: discover
 depends_on: []
 intensity: 1
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL to check for framing defenses"

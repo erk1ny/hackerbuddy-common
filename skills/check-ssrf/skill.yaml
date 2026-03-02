@@ -1,0 +1,14 @@
+name: check-ssrf
+version: "1.0.0"
+description: Test for server-side request forgery by injecting internal/external URLs into server-fetched parameters
+type: atomic
+tags: [ssrf, injection, owasp, cwe-918, cloud]
+tools: []
+mode: discover
+depends_on: []
+intensity: 3
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL with parameter that triggers server-side fetching"

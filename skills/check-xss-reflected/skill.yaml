@@ -1,0 +1,14 @@
+name: check-xss-reflected
+version: "1.0.0"
+description: Test for reflected XSS by injecting payloads into parameters and checking for unencoded reflection
+type: atomic
+tags: [xss, injection, owasp, cwe-79]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL with parameters to test for reflected XSS"

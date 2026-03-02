@@ -1,0 +1,15 @@
+name: httpx
+description: HTTP probing toolkit for technology detection, status checking, and response analysis
+binary: httpx
+categories: [probing, fingerprinting, recon]
+intensity: 2
+scope_extraction:
+  flag: "-u"
+  pattern: "https?://([^/:?#]+)"
+output_flags: "-j -o {output_file}"
+default_timeout: 300
+install: |
+  httpx is a Go-based HTTP toolkit. Install from https://github.com/projectdiscovery/httpx
+  - macOS: brew install httpx
+  - Linux: go install github.com/projectdiscovery/httpx/cmd/httpx@latest
+  - Or download from GitHub releases

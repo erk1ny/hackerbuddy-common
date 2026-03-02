@@ -1,0 +1,14 @@
+name: injection-scan
+version: "1.0.0"
+description: Multi-vector injection testing covering XSS, SQLi, and open redirect across discovered endpoints
+type: full
+tags: [injection, xss, sqli, redirect, owasp, comprehensive]
+tools: [ffuf]
+mode: discover
+depends_on: [check-xss-reflected, check-sqli-error, check-open-redirect, content-discovery]
+intensity: 4
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "Base URL to scan for injection vulnerabilities"

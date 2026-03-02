@@ -1,0 +1,14 @@
+name: check-cors
+version: "1.0.0"
+description: Test for CORS misconfiguration that could allow unauthorized cross-origin data access
+type: atomic
+tags: [cors, headers, cross-origin, owasp, misconfig]
+tools: []
+mode: discover
+depends_on: []
+intensity: 1
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL to test CORS configuration on"

@@ -1,0 +1,14 @@
+name: check-jwt
+version: "1.0.0"
+description: Analyze JWT implementation for signature bypass, weak secrets, and algorithm confusion attacks
+type: atomic
+tags: [jwt, auth, token, owasp, cwe-347]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL where JWT authentication is used"

@@ -1,9 +1,14 @@
 name: detect-sdks
 version: "1.0.0"
-description: Identify JavaScript SDKs and third-party libraries loaded on a page
+description: Identify JavaScript SDKs, third-party libraries, and their security-relevant behaviors
 type: atomic
-tags: [recon, javascript, sdk, fingerprinting]
+tags: [recon, javascript, sdk, fingerprinting, supply-chain]
 tools: []
 mode: discover
 depends_on: []
 intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL to scan for JavaScript SDKs"

@@ -1,0 +1,14 @@
+name: check-idor
+version: "1.0.0"
+description: Test for insecure direct object reference by manipulating resource identifiers
+type: atomic
+tags: [idor, authorization, access-control, owasp, cwe-639]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL with resource identifier to test"

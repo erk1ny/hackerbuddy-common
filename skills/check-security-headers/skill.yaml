@@ -1,0 +1,14 @@
+name: check-security-headers
+version: "1.0.0"
+description: Audit HTTP security headers for missing or misconfigured defenses
+type: atomic
+tags: [headers, defense, hardening, owasp, misconfig]
+tools: []
+mode: discover
+depends_on: []
+intensity: 1
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL to check security headers on"

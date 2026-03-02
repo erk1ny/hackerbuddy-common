@@ -1,11 +1,11 @@
 name: nuclei
-description: Fast vulnerability scanner using community-maintained templates
+description: Template-based vulnerability scanner with thousands of community detection signatures
 binary: nuclei
-categories: [scanning, vulnerability]
+categories: [scanning, vulnerability, detection]
 intensity: 4
 scope_extraction:
   flag: "-u"
-  pattern: "https?://([^/:]+)"
+  pattern: "https?://([^/:?#]+)"
 output_flags: "-j -o {output_file}"
 default_timeout: 600
 install: |

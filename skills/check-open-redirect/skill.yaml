@@ -1,0 +1,14 @@
+name: check-open-redirect
+version: "1.0.0"
+description: Test for open redirect vulnerabilities in URL redirect parameters
+type: atomic
+tags: [redirect, owasp, phishing, cwe-601]
+tools: []
+mode: discover
+depends_on: []
+intensity: 2
+inputs:
+  - name: target_url
+    type: string
+    required: true
+    description: "URL with redirect parameter to test"
